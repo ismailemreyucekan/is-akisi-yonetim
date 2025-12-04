@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Workflow, Plus, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, Workflow, Plus, Sun, Moon, ClipboardList } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import './Layout.css'
 
@@ -40,6 +40,15 @@ const Layout = ({ children }) => {
             >
               <Workflow size={18} />
               <span>İş Akışları</span>
+            </Link>
+            <Link
+              to="/issues"
+              className={`nav-link ${
+                location.pathname.startsWith('/issues') ? 'active' : ''
+              }`}
+            >
+              <ClipboardList size={18} />
+              <span>Issue Yönetimi</span>
             </Link>
             <Link
               to="/workflows/new"

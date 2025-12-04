@@ -1,0 +1,157 @@
+.issue-board-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.board-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.board-loading {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-light);
+}
+
+.board-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.board-column {
+  background: var(--bg-card);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  min-height: 300px;
+  box-shadow: var(--shadow);
+}
+
+.board-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.board-column-header h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.column-count {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.board-column-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 240px;
+}
+
+.column-empty {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.board-card {
+  background: var(--bg);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  text-decoration: none;
+  color: inherit;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.board-card h3 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.board-card p {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-bottom: 0.3rem;
+}
+
+.board-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.board-card-meta .priority {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.board-card-meta .priority.low {
+  background: #e0f2fe;
+  color: #0ea5e9;
+}
+
+.board-card-meta .priority.medium {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.board-card-meta .priority.high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.board-card-meta .priority.critical {
+  background: #f97316;
+  color: white;
+}
+
+.board-card-meta .assignee {
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.board-card.dragging {
+  opacity: 0.6;
+}
+
+.board-card.updating {
+  border-style: dashed;
+}
+
+.btn-secondary .spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 992px) {
+  .board-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+
