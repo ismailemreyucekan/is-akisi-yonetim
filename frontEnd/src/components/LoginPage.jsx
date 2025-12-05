@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import './LoginPage.css'
 
+const API_URL = 'http://localhost:5000/api'
+
 const LoginPage = () => {
   const [userType, setUserType] = useState(null) // null, 'admin', or 'user'
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleUserTypeSelect = (type) => {
     setUserType(type)
@@ -20,10 +24,43 @@ const LoginPage = () => {
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Şimdilik sadece tasarım, fonksiyonellik eklenmeyecek
-    console.log('Login attempt:', userType, formData)
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          user_type: userType
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Başarılı giriş
+        console.log('Giriş başarılı:', data.user)
+        // Burada kullanıcıyı ana sayfaya yönlendirebilirsiniz
+        // Örnek: localStorage.setItem('user', JSON.stringify(data.user))
+        // window.location.href = '/dashboard'
+        alert(`Hoş geldiniz ${data.user.full_name}!`)
+      } else {
+        // Hata mesajı göster
+        setError(data.message || 'Giriş başarısız')
+      }
+    } catch (err) {
+      console.error('Login hatası:', err)
+      setError('Bağlantı hatası. Lütfen backend sunucusunun çalıştığından emin olun.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleBack = () => {
@@ -124,6 +161,12 @@ const LoginPage = () => {
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
+              {error && (
+                <div className="error-message">
+                  {error}
+                </div>
+              )}
+              
               <div className="form-group">
                 <label htmlFor="email">E-posta</label>
                 <input
@@ -134,6 +177,7 @@ const LoginPage = () => {
                   onChange={handleInputChange}
                   placeholder="ornek@email.com"
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -147,19 +191,20 @@ const LoginPage = () => {
                   onChange={handleInputChange}
                   placeholder="••••••••"
                   required
+                  disabled={loading}
                 />
               </div>
 
               <div className="form-options">
                 <label className="remember-me">
-                  <input type="checkbox" />
+                  <input type="checkbox" disabled={loading} />
                   <span>Beni hatırla</span>
                 </label>
                 <a href="#" className="forgot-password">Şifremi unuttum</a>
               </div>
 
-              <button type="submit" className="login-button">
-                Giriş Yap
+              <button type="submit" className="login-button" disabled={loading}>
+                {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
               </button>
             </form>
           </div>
