@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './LoginPage.css'
+import AdminDashboard from './AdminDashboard'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -11,6 +12,7 @@ const LoginPage = () => {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loggedInUser, setLoggedInUser] = useState(null)
 
   const handleUserTypeSelect = (type) => {
     setUserType(type)
@@ -46,11 +48,7 @@ const LoginPage = () => {
 
       if (response.ok && data.success) {
         // Başarılı giriş
-        console.log('Giriş başarılı:', data.user)
-        // Burada kullanıcıyı ana sayfaya yönlendirebilirsiniz
-        // Örnek: localStorage.setItem('user', JSON.stringify(data.user))
-        // window.location.href = '/dashboard'
-        alert(`Hoş geldiniz ${data.user.full_name}!`)
+        setLoggedInUser(data.user)
       } else {
         // Hata mesajı göster
         setError(data.message || 'Giriş başarısız')
@@ -63,9 +61,23 @@ const LoginPage = () => {
     }
   }
 
+  const handleLogout = () => {
+    setLoggedInUser(null)
+    setUserType(null)
+    setFormData({ email: '', password: '' })
+  }
+
   const handleBack = () => {
     setUserType(null)
     setFormData({ email: '', password: '' })
+  }
+
+  if (loggedInUser && loggedInUser.user_type === 'admin') {
+    return (
+      <div className="login-container">
+        <AdminDashboard user={loggedInUser} onLogout={handleLogout} />
+      </div>
+    )
   }
 
   return (

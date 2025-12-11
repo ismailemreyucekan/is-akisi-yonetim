@@ -42,14 +42,15 @@ def login():
                 'message': 'E-posta veya şifre hatalı'
             }), 401
         
-        log_success(f"Login başarılı - {identity.full_name} ({email})")
+        log_success(f"Login başarılı - {identity.first_name} {identity.last_name} ({email})")
         return jsonify({
             'success': True,
             'message': 'Giriş başarılı',
             'user': {
                 'id': identity.id,
                 'email': identity.email,
-                'full_name': identity.full_name,
+                'first_name': identity.first_name,
+                'last_name': identity.last_name,
                 'user_type': identity.user_type
             }
         }), 200
