@@ -200,7 +200,9 @@ const AdminDashboard = ({ user, onLogout }) => {
   }
 
   const getRoleLabel = (userType) => {
-    return userType === 'admin' ? 'Admin' : 'Kullanıcı'
+    if (userType === 'admin') return 'Admin'
+    if (userType === 'manager') return 'Yönetici'
+    return 'Kullanıcı'
   }
 
   const getStatusLabel = (isActive) => {
@@ -319,8 +321,49 @@ const AdminDashboard = ({ user, onLogout }) => {
     }
   }
 
+  const handleRoleChange = async (u, nextRole) => {
+    try {
+      await fetch(`${API_URL}/users/${u.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_type: nextRole })
+      })
+      fetchUsers()
+    } catch (err) {
+      console.error('Rol güncelleme hatası:', err)
+    }
+  }
+
+  const handleToggleActive = async (u) => {
+    try {
+      await fetch(`${API_URL}/users/${u.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !u.is_active })
+      })
+      fetchUsers()
+    } catch (err) {
+      console.error('Aktif/pasif güncelleme hatası:', err)
+    }
+  }
+
   const activeUsers = users.filter(u => u.is_active).length
   const totalUsers = users.length
+
+  const sectionTitle = () => {
+    switch (activeSection) {
+      case 'timesheet':
+        return { kicker: 'Tüm kullanıcıların günlük girişlerini görüntüleyin', title: 'Timesheet' }
+      case 'auth':
+        return { kicker: 'Kullanıcı rolleri ve yetkilerini yönetin', title: 'Yetkilendirme' }
+      case 'schema':
+        return { kicker: 'Sistem şeması ve akışları', title: 'Şema Yönetimi' }
+      default:
+        return { kicker: 'Tüm kullanıcıları görüntüleyin ve yönetin', title: 'Kullanıcı Yönetimi' }
+    }
+  }
+
+  const { kicker, title } = sectionTitle()
 
   return (
     <div className="admin-shell">
@@ -381,14 +424,8 @@ const AdminDashboard = ({ user, onLogout }) => {
       <main className="admin-main">
         <header className="main-header">
           <div>
-            <p className="page-kicker">
-              {activeSection === 'timesheet'
-                ? 'Tüm kullanıcıların günlük girişlerini görüntüleyin'
-                : 'Tüm kullanıcıları görüntüleyin ve yönetin'}
-            </p>
-            <h1 className="page-title">
-              {activeSection === 'timesheet' ? 'Timesheet' : 'Kullanıcı Yönetimi'}
-            </h1>
+            <p className="page-kicker">{kicker}</p>
+            <h1 className="page-title">{title}</h1>
           </div>
           <div className="header-actions">
             <button className="ghost-button" onClick={onLogout}>
@@ -639,6 +676,111 @@ const AdminDashboard = ({ user, onLogout }) => {
                 )}
               </>
             )}
+          </section>
+        )}
+
+        {activeSection === 'auth' && (
+          <section className="table-card">
+            <div className="table-toolbar">
+              <div className="toolbar-left">
+                <p className="page-kicker">Kullanıcı rolleri ve durumları</p>
+                <h2 className="page-title" style={{ fontSize: '20px', margin: 0 }}>Yetkilendirme</h2>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="loading-state">Yükleniyor...</div>
+            ) : (
+              <div className="table-scroll">
+                <table className="user-table">
+                  <thead>
+                    <tr>
+                      <th>Kullanıcı</th>
+                      <th>Email</th>
+                      <th>Rol</th>
+                      <th>Durum</th>
+                      <th>İşlemler</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '32px' }}>
+                          Kullanıcı bulunamadı
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map((u) => (
+                        <tr key={u.id}>
+                          <td>
+                            <div className="user-cell">
+                              <div className="user-avatar small">
+                                {u.first_name?.[0] || ''}{u.last_name?.[0] || ''}
+                              </div>
+                              <span>{u.first_name} {u.last_name}</span>
+                            </div>
+                          </td>
+                          <td>{u.email}</td>
+                          <td>
+                            <div className="role-select-wrap">
+                              <span className={`pill ${
+                                u.user_type === 'admin'
+                                  ? 'pill-admin'
+                                  : u.user_type === 'manager'
+                                  ? 'pill-manager'
+                                  : 'pill-user'
+                              }`}>
+                                {getRoleLabel(u.user_type)}
+                              </span>
+                              <select
+                                className="select-input role-select"
+                                value={u.user_type}
+                                onChange={(e) => handleRoleChange(u, e.target.value)}
+                              >
+                                <option value="user">Kullanıcı</option>
+                                <option value="manager">Yönetici</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`pill pill-status ${u.is_active ? 'pill-success' : 'pill-muted'}`}>
+                              {u.is_active ? 'Aktif' : 'Pasif'}
+                            </span>
+                          </td>
+                          <td className="actions-cell">
+                            <button
+                              className="ghost-button"
+                              onClick={() => handleRoleChange(u, u.user_type === 'admin' ? 'user' : 'admin')}
+                            >
+                              {u.user_type === 'admin' ? 'Kullanıcı yap' : 'Admin yap'}
+                            </button>
+                            <button
+                              className="ghost-button"
+                              onClick={() => handleToggleActive(u)}
+                            >
+                              {u.is_active ? 'Pasif yap' : 'Aktif yap'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeSection === 'schema' && (
+          <section className="table-card">
+            <div className="table-toolbar">
+              <div className="toolbar-left">
+                <p className="page-kicker">Sistem şeması ve akışları</p>
+                <h2 className="page-title" style={{ fontSize: '20px', margin: 0 }}>Şema</h2>
+              </div>
+            </div>
+            <div className="loading-state">Şema görünümü henüz eklenmedi.</div>
           </section>
         )}
       </main>

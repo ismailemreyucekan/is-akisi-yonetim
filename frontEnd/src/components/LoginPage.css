@@ -681,6 +681,11 @@
   color: #4338ca;
 }
 
+.pill-manager {
+  background: #e0f2fe;
+  color: #0ea5e9;
+}
+
 .pill-admin {
   background: #fdf2f8;
   color: #c026d3;
@@ -901,6 +906,16 @@
 .actions-cell {
   display: flex;
   gap: 8px;
+}
+
+.role-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-select {
+  min-width: 140px;
 }
 
 .icon-button {
