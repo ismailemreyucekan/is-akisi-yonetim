@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './LoginPage.css'
 import AdminDashboard from './AdminDashboard'
+import UserDashboard from './UserDashboard'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -72,10 +73,14 @@ const LoginPage = () => {
     setFormData({ email: '', password: '' })
   }
 
-  if (loggedInUser && loggedInUser.user_type === 'admin') {
+  if (loggedInUser) {
     return (
       <div className="login-container">
-        <AdminDashboard user={loggedInUser} onLogout={handleLogout} />
+        {loggedInUser.user_type === 'admin' ? (
+          <AdminDashboard user={loggedInUser} onLogout={handleLogout} />
+        ) : (
+          <UserDashboard user={loggedInUser} onLogout={handleLogout} />
+        )}
       </div>
     )
   }

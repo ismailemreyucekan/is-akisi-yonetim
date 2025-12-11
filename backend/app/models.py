@@ -52,7 +52,8 @@ class Timesheet(db.Model):
     work_mode = db.Column(db.String(50), nullable=False)       # ofis, uzaktan vb
     hours = db.Column(db.Float, nullable=False)
     description = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(50), nullable=False, default='Onay Bekliyor')
+    status = db.Column(db.String(50), nullable=False, default='Taslak')  # Taslak, Onay Bekliyor, Onaylandı, Reddedildi
+    reject_reason = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -66,5 +67,6 @@ class Timesheet(db.Model):
             'hours': self.hours,
             'description': self.description,
             'status': self.status,
+            'reject_reason': self.reject_reason,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

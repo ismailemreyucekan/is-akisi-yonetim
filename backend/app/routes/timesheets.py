@@ -25,6 +25,8 @@ def list_timesheets():
         user_id = request.args.get('user_id', type=int)
         start_date = parse_date(request.args.get('start_date'))
         end_date = parse_date(request.args.get('end_date'))
+        include_drafts = request.args.get('include_drafts', 'false').lower() == 'true'
+        status_filter = request.args.get('status')
 
         query = Timesheet.query
         if user_id:
@@ -33,6 +35,10 @@ def list_timesheets():
             query = query.filter(Timesheet.work_date >= start_date)
         if end_date:
             query = query.filter(Timesheet.work_date <= end_date)
+        if not include_drafts:
+            query = query.filter(Timesheet.status != 'Taslak')
+        if status_filter:
+            query = query.filter(Timesheet.status == status_filter)
 
         timesheets = query.order_by(Timesheet.work_date.desc(), Timesheet.id.desc()).all()
         log_success(f"Timesheet listelendi: {len(timesheets)} kayıt")
@@ -62,7 +68,7 @@ def create_timesheet():
         work_mode = data.get('work_mode')
         hours = data.get('hours')
         description = data.get('description')
-        status = data.get('status') or 'Onay Bekliyor'
+        status = data.get('status') or 'Taslak'
 
         if not identity_id or not work_date or not project or not activity_type or not work_mode or hours is None:
             return jsonify({
@@ -83,7 +89,8 @@ def create_timesheet():
             work_mode=work_mode,
             hours=hours,
             description=description,
-            status=status
+            status=status,
+            reject_reason=None
         )
         db.session.add(ts)
         db.session.commit()
@@ -122,7 +129,12 @@ def update_timesheet(ts_id):
         if 'description' in data:
             ts.description = data.get('description')
         if 'status' in data:
-            ts.status = data.get('status', ts.status)
+            new_status = data.get('status', ts.status)
+            ts.status = new_status
+            if new_status == 'Reddedildi':
+                ts.reject_reason = data.get('reject_reason')
+            else:
+                ts.reject_reason = None
 
         db.session.commit()
         log_success(f"Timesheet güncellendi: ID {ts_id}")

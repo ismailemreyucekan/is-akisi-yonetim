@@ -696,6 +696,21 @@
   color: #16a34a;
 }
 
+.pill-danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.pill-pending {
+  background: #fefce8;
+  color: #d97706;
+}
+
+.pill-draft {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
 .pill-muted {
   background: #f8fafc;
   color: #475569;
@@ -759,6 +774,36 @@
   text-align: center;
 }
 
+.calendar-cell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.calendar-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calendar-dayname {
+  font-size: 12px;
+  color: #475569;
+}
+
+.day-hours-badge {
+  background: #2563eb;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+}
+
 .calendar-cell {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -768,11 +813,17 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .calendar-cell--muted {
   background: #f9fafb;
   color: #94a3b8;
+}
+
+.calendar-cell:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .calendar-date {
@@ -794,6 +845,33 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.calendar-entry.status-draft {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.calendar-entry.status-pending {
+  background: #fff9db;
+  border-color: #facc15;
+}
+
+.calendar-entry.status-success {
+  background: #ecfdf3;
+  border-color: #86efac;
+}
+
+.calendar-entry.status-danger {
+  background: #fef2f2;
+  border-color: #fecdd3;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .entry-title {
@@ -1032,6 +1110,28 @@
   background: #fff;
   color: #0f172a;
   box-sizing: border-box;
+}
+
+.modal-form .form-group textarea,
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #fff;
+  color: #0f172a;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-form .form-group textarea:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .modal-form .form-group input:focus,

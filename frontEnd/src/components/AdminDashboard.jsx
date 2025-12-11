@@ -24,6 +24,7 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
   const [activeSection, setActiveSection] = useState('users') // 'users' | 'timesheet'
+  const [rejectModal, setRejectModal] = useState({ open: false, tsId: null, reason: '' })
 
   // Kullanıcıları yükle
   useEffect(() => {
@@ -207,9 +208,18 @@ const AdminDashboard = ({ user, onLogout }) => {
   }
 
   const getTimesheetStatusClass = (status) => {
-    if (status === 'Onaylandı') return 'pill-success'
-    if (status === 'Onay Bekliyor') return 'pill-info'
-    return 'pill-muted'
+    switch (status) {
+      case 'Taslak':
+        return 'pill-draft'
+      case 'Onay Bekliyor':
+        return 'pill-pending'
+      case 'Onaylandı':
+        return 'pill-success'
+      case 'Reddedildi':
+        return 'pill-danger'
+      default:
+        return 'pill-muted'
+    }
   }
 
   const formatDate = (iso) => {
@@ -257,6 +267,10 @@ const AdminDashboard = ({ user, onLogout }) => {
     return days
   }
 
+  const dayNames = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+  // Hafta içi gri, Cumartesi lila, Pazar pembe
+  const dayColors = ['#f5f6fa', '#f5f6fa', '#f5f6fa', '#f5f6fa', '#f5f6fa', '#f7f7ff', '#fff5f5']
+
   const fetchTimesheets = async (userId, month = selectedMonth) => {
     if (!userId) return
     try {
@@ -284,6 +298,26 @@ const AdminDashboard = ({ user, onLogout }) => {
       fetchTimesheets(selectedUserId, selectedMonth)
     }
   }, [activeSection, selectedUserId, selectedMonth])
+
+  const handleTimesheetStatus = async (tsId, status, reason) => {
+    let payload = { status }
+    if (status === 'Reddedildi') {
+      if (!reason) return
+      payload.reject_reason = reason
+    }
+    try {
+      await fetch(`${API_URL}/timesheets/${tsId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (selectedUserId) {
+        fetchTimesheets(selectedUserId, selectedMonth)
+      }
+    } catch (err) {
+      console.error('Durum güncelleme hatası:', err)
+    }
+  }
 
   const activeUsers = users.filter(u => u.is_active).length
   const totalUsers = users.length
@@ -522,15 +556,41 @@ const AdminDashboard = ({ user, onLogout }) => {
                   {buildMonthDays(selectedMonth).map((day, idx) => {
                     const key = day.date ? formatDateKey(day.date) : `empty-${idx}`
                     const entries = day.date ? timesheets.filter((t) => formatDateKey(t.work_date) === formatDateKey(day.date)) : []
+                    const totalHours = entries.reduce((sum, e) => sum + (e.hours || 0), 0)
+                    const dow = day.date ? (day.date.getDay() + 6) % 7 : idx % 7
                     return (
                       <div
                         key={key}
                         className={`calendar-cell ${day.currentMonth ? '' : 'calendar-cell--muted'}`}
+                        style={{ background: day.currentMonth ? (dayColors[dow] || '#f8fafc') : undefined }}
                       >
-                        <div className="calendar-date">{day.label}</div>
+                        <div className="calendar-cell-header">
+                          <div className="calendar-date-block">
+                            <div className="calendar-date">{day.label}</div>
+                            <div className="calendar-dayname">{day.date ? dayNames[dow] : ''}</div>
+                          </div>
+                          {totalHours > 0 && (
+                            <div className="day-hours-badge">
+                              {totalHours.toFixed(1)}s
+                            </div>
+                          )}
+                        </div>
                         <div className="calendar-entries">
                           {entries.slice(0, 2).map((t) => (
-                            <div key={t.id} className="calendar-entry">
+                            <div
+                              key={t.id}
+                              className={`calendar-entry ${
+                                t.status === 'Taslak'
+                                  ? 'status-draft'
+                                  : t.status === 'Onay Bekliyor'
+                                  ? 'status-pending'
+                                  : t.status === 'Onaylandı'
+                                  ? 'status-success'
+                                  : t.status === 'Reddedildi'
+                                  ? 'status-danger'
+                                  : ''
+                              }`}
+                            >
                               <div className="entry-title">{t.project}</div>
                               <div className="entry-meta">
                                 <span>{t.hours} saat</span>
@@ -538,7 +598,32 @@ const AdminDashboard = ({ user, onLogout }) => {
                                   {t.status}
                                 </span>
                               </div>
-                              <div className="entry-desc">{t.description || t.activity_type}</div>
+                            <div className="entry-desc">
+                              {t.description || t.activity_type}
+                              {t.status === 'Reddedildi' && t.reject_reason ? ` • Neden: ${t.reject_reason}` : ''}
+                            </div>
+                            {t.status === 'Onay Bekliyor' && (
+                              <div className="entry-actions">
+                                <button
+                                  className="primary-button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleTimesheetStatus(t.id, 'Onaylandı')
+                                  }}
+                                >
+                                  Onayla
+                                </button>
+                                <button
+                                  className="ghost-button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setRejectModal({ open: true, tsId: t.id, reason: '' })
+                                  }}
+                                >
+                                  Reddet
+                                </button>
+                              </div>
+                            )}
                             </div>
                           ))}
                           {entries.length > 2 && (
@@ -645,6 +730,49 @@ const AdminDashboard = ({ user, onLogout }) => {
                 </button>
                 <button type="submit" className="primary-button">
                   {editingUser ? 'Güncelle' : 'Oluştur'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModal.open && (
+        <div className="modal-overlay" onClick={() => setRejectModal({ open: false, tsId: null, reason: '' })}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Red Nedeni</h2>
+              <button className="modal-close" onClick={() => setRejectModal({ open: false, tsId: null, reason: '' })}>×</button>
+            </div>
+            <form
+              className="modal-form"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                await handleTimesheetStatus(rejectModal.tsId, 'Reddedildi', rejectModal.reason)
+                setRejectModal({ open: false, tsId: null, reason: '' })
+              }}
+            >
+              <div className="form-group">
+                <label>Red Nedeni *</label>
+                <input
+                  type="text"
+                  value={rejectModal.reason}
+                  onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+                  required
+                  placeholder="Neden yazın"
+                />
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setRejectModal({ open: false, tsId: null, reason: '' })}
+                >
+                  İptal
+                </button>
+                <button type="submit" className="primary-button">
+                  Gönder
                 </button>
               </div>
             </form>
