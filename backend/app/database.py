@@ -1,8 +1,4 @@
-"""
-Veritabanı bağlantı yapılandırması
-NOT: Artık Alembic migration'ları kullanılıyor. 
-Tablo oluşturma için: alembic upgrade head
-"""
+
 # Ortam değişkeninden parola alınıyor
 # psql_password = os.getenv("PSQL_PASSWORD")
 psql_password = "12345678"

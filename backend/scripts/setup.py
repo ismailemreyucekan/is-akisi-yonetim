@@ -1,6 +1,4 @@
-"""
-İlk kurulum için tabloyu oluşturur ve örnek verileri ekler
-"""
+
 import sys
 import os
 import subprocess
@@ -12,7 +10,7 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 def run_script(script_name):
-    """Python script'ini çalıştırır"""
+    
     try:
         result = subprocess.run([sys.executable, script_name], check=True)
         print(f"✓ {script_name} başarıyla çalıştırıldı")

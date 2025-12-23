@@ -1,8 +1,4 @@
-"""
-Alembic migration'larını çalıştırır
-NOT: Bu script Alembic migration'larını çalıştırmak için kullanılır.
-Manuel tablo oluşturma yerine migration'lar kullanılıyor.
-"""
+
 import sys
 import os
 import subprocess

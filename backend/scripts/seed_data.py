@@ -1,6 +1,4 @@
-"""
-Örnek kullanıcı ve admin verilerini veritabanına ekler
-"""
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,11 +9,11 @@ from app.models import db, Identity
 from app.logger import log_operation, log_success
 
 def hash_password(password):
-    """Şifreyi hash'ler"""
+    
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def seed_data():
-    """Örnek verileri ekle"""
+   
     app = create_app()
     with app.app_context():
         log_operation("Seed data işlemi başlatıldı")

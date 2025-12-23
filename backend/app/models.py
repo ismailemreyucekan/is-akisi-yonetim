@@ -1,13 +1,11 @@
-"""
-Veritabanı modelleri
-"""
+
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
 db = SQLAlchemy()
 
 class Identity(db.Model):
-    """Kimlik modeli - Tüm kullanıcılar ve adminler için tek tablo"""
+    
     __tablename__ = 'identities'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +39,7 @@ class Identity(db.Model):
 
 
 class Timesheet(db.Model):
-    """Kullanıcı timesheet kayıtları"""
+    
     __tablename__ = 'timesheets'
 
     id = db.Column(db.Integer, primary_key=True)
