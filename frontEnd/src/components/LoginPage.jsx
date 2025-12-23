@@ -76,7 +76,7 @@ const LoginPage = () => {
   if (loggedInUser) {
     return (
       <div className="login-container">
-        {loggedInUser.user_type === 'admin' ? (
+        {loggedInUser.user_type === 'admin' || loggedInUser.user_type === 'manager' ? (
           <AdminDashboard user={loggedInUser} onLogout={handleLogout} />
         ) : (
           <UserDashboard user={loggedInUser} onLogout={handleLogout} />

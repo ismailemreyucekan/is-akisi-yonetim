@@ -26,7 +26,16 @@ def login():
                 'message': 'E-posta, şifre ve kullanıcı tipi gereklidir'
             }), 400
         
-        identity = Identity.query.filter_by(email=email, user_type=user_type).first()
+        # Kullanıcı tipi kontrolü: 'user' girişi ile manager'lar da giriş yapabilir
+        if user_type == 'user':
+            # 'user' girişi ile hem 'user' hem de 'manager' rolündeki kullanıcılar giriş yapabilir
+            identity = Identity.query.filter(
+                Identity.email == email,
+                Identity.user_type.in_(['user', 'manager'])
+            ).first()
+        else:
+            # 'admin' girişi için sadece admin rolündeki kullanıcılar
+            identity = Identity.query.filter_by(email=email, user_type=user_type).first()
         
         if not identity or not identity.is_active:
             log_error(f"Login başarısız - Kullanıcı bulunamadı veya aktif değil: {email}")

@@ -23,10 +23,12 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [timesheetLoading, setTimesheetLoading] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
-  const [activeSection, setActiveSection] = useState('users') // 'users' | 'timesheet'
+  const [activeSection, setActiveSection] = useState(user.user_type === 'admin' ? 'users' : 'timesheet') // 'users' | 'timesheet' | 'auth' | 'schema'
   const [rejectModal, setRejectModal] = useState({ open: false, tsId: null, reason: '' })
+  
+  const isAdmin = user.user_type === 'admin'
 
-  // Kullanıcıları yükle
+  // Kullanıcıları yükle (timesheet bölümü için gerekli)
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -377,13 +379,15 @@ const AdminDashboard = ({ user, onLogout }) => {
         </div>
 
         <nav className="sidebar-nav">
-          <div
-            className={`nav-item ${activeSection === 'schema' ? 'active' : ''}`}
-            onClick={() => setActiveSection('schema')}
-          >
-            <span className="nav-icon">🗂️</span>
-            <span>Şema</span>
-          </div>
+          {isAdmin && (
+            <div
+              className={`nav-item ${activeSection === 'schema' ? 'active' : ''}`}
+              onClick={() => setActiveSection('schema')}
+            >
+              <span className="nav-icon">🗂️</span>
+              <span>Şema</span>
+            </div>
+          )}
           <div
             className={`nav-item ${activeSection === 'timesheet' ? 'active' : ''}`}
             onClick={() => setActiveSection('timesheet')}
@@ -391,20 +395,24 @@ const AdminDashboard = ({ user, onLogout }) => {
             <span className="nav-icon">⏱️</span>
             <span>Timesheet</span>
           </div>
-          <div
-            className={`nav-item ${activeSection === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveSection('users')}
-          >
-            <span className="nav-icon">👥</span>
-            <span>Kullanıcı Yönetimi</span>
-          </div>
-          <div
-            className={`nav-item ${activeSection === 'auth' ? 'active' : ''}`}
-            onClick={() => setActiveSection('auth')}
-          >
-            <span className="nav-icon">🔐</span>
-            <span>Yetkilendirme</span>
-          </div>
+          {isAdmin && (
+            <>
+              <div
+                className={`nav-item ${activeSection === 'users' ? 'active' : ''}`}
+                onClick={() => setActiveSection('users')}
+              >
+                <span className="nav-icon">👥</span>
+                <span>Kullanıcı Yönetimi</span>
+              </div>
+              <div
+                className={`nav-item ${activeSection === 'auth' ? 'active' : ''}`}
+                onClick={() => setActiveSection('auth')}
+              >
+                <span className="nav-icon">🔐</span>
+                <span>Yetkilendirme</span>
+              </div>
+            </>
+          )}
         </nav>
 
         <div className="sidebar-user">
@@ -416,7 +424,7 @@ const AdminDashboard = ({ user, onLogout }) => {
             <div className="user-name">
               {user.first_name} {user.last_name}
             </div>
-            <div className="user-role">admin</div>
+            <div className="user-role">{user.user_type === 'admin' ? 'admin' : 'yönetici'}</div>
           </div>
         </div>
       </aside>
@@ -434,7 +442,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           </div>
         </header>
 
-        {activeSection === 'users' && (
+        {activeSection === 'users' && isAdmin && (
           <>
             <section className="stats-row">
               <div className="stat-card">
@@ -679,7 +687,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           </section>
         )}
 
-        {activeSection === 'auth' && (
+        {activeSection === 'auth' && isAdmin && (
           <section className="table-card">
             <div className="table-toolbar">
               <div className="toolbar-left">
@@ -772,7 +780,7 @@ const AdminDashboard = ({ user, onLogout }) => {
           </section>
         )}
 
-        {activeSection === 'schema' && (
+        {activeSection === 'schema' && isAdmin && (
           <section className="table-card">
             <div className="table-toolbar">
               <div className="toolbar-left">
