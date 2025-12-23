@@ -378,7 +378,7 @@ const UserDashboard = ({ user, onLogout }) => {
                 <select name="work_mode" value={formData.work_mode} onChange={handleInputChange} required>
                   <option value="Ofis">Ofis</option>
                   <option value="Uzaktan">Uzaktan</option>
-                  <option value="Hibrit">Hibrit</option>
+                  
                 </select>
               </div>
 
@@ -388,23 +388,23 @@ const UserDashboard = ({ user, onLogout }) => {
                   <input
                     type="number"
                     min="0"
-                    step="0.5"
+                    step="1"
                     placeholder="Saat"
                     value={durationHours}
                     onChange={(e) => setDurationHours(e.target.value)}
                     style={{ flex: 1 }}
                     required
                   />
-                  <select
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="1"
+                    placeholder="Dakika"
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(e.target.value)}
                     style={{ width: '90px' }}
-                  >
-                    <option value="0">+00 dk</option>
-                    <option value="15">+15 dk</option>
-                    <option value="30">+30 dk</option>
-                    <option value="45">+45 dk</option>
-                  </select>
+                  />
                 </div>
               </div>
 

@@ -177,7 +177,11 @@ const LoginPage = () => {
               <p className="login-subtitle">Hesabınıza giriş yapın</p>
             </div>
 
-            <form className="login-form" onSubmit={handleSubmit}>
+            <form
+              className="login-form"
+              onSubmit={handleSubmit}
+              autoComplete="off"
+            >
               {error && (
                 <div className="error-message">
                   {error}
@@ -192,6 +196,7 @@ const LoginPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                  autoComplete="off"
                   placeholder="ornek@email.com"
                   required
                   disabled={loading}
@@ -206,6 +211,7 @@ const LoginPage = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   required
                   disabled={loading}
