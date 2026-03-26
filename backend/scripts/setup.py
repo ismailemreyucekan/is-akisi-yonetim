@@ -21,52 +21,12 @@ def run_script(script_name):
 
 if __name__ == "__main__":
     print("Veritabanı kurulumu başlatılıyor...\n")
-    
-    # Önce yeni migration'ları oluştur (model değişiklikleri varsa)
-    print("Model değişiklikleri kontrol ediliyor ve migration oluşturuluyor...")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "revision", "--autogenerate", "-m", "auto_migration"],
-            cwd=project_root,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            if "No changes" not in result.stdout and "Can't locate revision" not in result.stderr:
-                print("✓ Yeni migration oluşturuldu")
-            elif "Can't locate revision" in result.stderr:
-                print("⚠ Migration geçmişi hatası tespit edildi. Lütfen scripts/fix_alembic_version.py çalıştırın.")
-            else:
-                print("✓ Model değişikliği yok, migration gerekmiyor")
-        else:
-            if "Can't locate revision" in result.stderr:
-                print("⚠ Migration geçmişi hatası. Lütfen scripts/fix_alembic_version.py çalıştırın.")
-            else:
-                print(f"⚠ Migration oluşturma uyarısı: {result.stderr}")
-    except Exception as e:
-        print(f"⚠ Migration oluşturma hatası (devam ediliyor): {e}")
-    
-    print()
-    
-    # Alembic migration'larını uygula
-    print("Alembic migration'ları uygulanıyor...")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=True,
-            cwd=project_root
-        )
-        print("✓ Migration'lar başarıyla uygulandı")
-    except subprocess.CalledProcessError as e:
-        print(f"✗ Migration uygulanırken hata: {e}")
-        sys.exit(1)
-    
-    print()
-    
-    # Örnek verileri ekle
-    print("Örnek veriler ekleniyor...")
+
+    # Alembic migrations klasörü bu projede görünmediği için,
+    # doğrudan SQLAlchemy tablolarını oluşturup varsayılan seed verileri basıyoruz.
+    print("Tablolar oluşturuluyor ve seed veriler ekleniyor...")
     if not run_script("scripts/seed_data.py"):
         sys.exit(1)
-    
+
     print("\n✓ Kurulum tamamlandı!")
 

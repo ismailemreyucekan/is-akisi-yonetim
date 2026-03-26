@@ -17,6 +17,7 @@ const UserDashboard = ({ user, onLogout }) => {
   })
   const [durationHours, setDurationHours] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('0')
+  const [leaveType, setLeaveType] = useState('tam-gun') // 'tam-gun' | 'yarim-gun'
   const [showModal, setShowModal] = useState(false)
   const [modalDate, setModalDate] = useState(new Date())
   const [error, setError] = useState('')
@@ -159,7 +160,6 @@ const UserDashboard = ({ user, onLogout }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target
     
-    // Eğer aktivite tipi "İzin" seçilirse, diğer alanları otomatik doldur
     if (name === 'activity_type') {
       if (value === 'İzin') {
         setFormData({
@@ -168,10 +168,10 @@ const UserDashboard = ({ user, onLogout }) => {
           project: 'İzin',
           work_mode: 'Ofis',
         })
+        setLeaveType('tam-gun')
         setDurationHours('8')
         setDurationMinutes('0')
       } else {
-        // Başka bir aktivite seçilirse, izin için ayarlanan değerleri temizle
         setFormData({ ...formData, [name]: value })
         if (formData.activity_type === 'İzin') {
           setFormData(prev => ({ ...prev, project: '', work_mode: 'Ofis' }))
@@ -182,6 +182,12 @@ const UserDashboard = ({ user, onLogout }) => {
     } else {
       setFormData({ ...formData, [name]: value })
     }
+  }
+
+  const handleLeaveTypeChange = (type) => {
+    setLeaveType(type)
+    setDurationHours(type === 'tam-gun' ? '8' : '4')
+    setDurationMinutes('0')
   }
 
   const openDayModal = (dateObj) => {
@@ -212,16 +218,15 @@ const UserDashboard = ({ user, onLogout }) => {
     setSuccess('')
     
     const isLeave = formData.activity_type === 'İzin'
-    const totalHours = Number(durationHours || 0) + Number(durationMinutes || 0) / 60
+    const leaveHours = leaveType === 'tam-gun' ? 8 : 4
+    const totalHours = isLeave ? leaveHours : Number(durationHours || 0) + Number(durationMinutes || 0) / 60
     
-    // İzin için validasyon
     if (isLeave) {
       if (!formData.activity_type || !formData.work_date) {
         setError('Tarih ve aktivite tipi zorunludur')
         return
       }
     } else {
-      // Normal aktiviteler için tüm alanlar zorunlu
       if (!formData.project || !formData.activity_type || !formData.work_mode || totalHours <= 0 || !formData.work_date) {
         setError('Tüm zorunlu alanları doldurun ve süreyi girin')
         return
@@ -233,7 +238,7 @@ const UserDashboard = ({ user, onLogout }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          hours: isLeave ? 8 : totalHours, // İzin için her zaman 8 saat
+          hours: isLeave ? (leaveType === 'tam-gun' ? 8 : 4) : totalHours,
           project: isLeave ? 'İzin' : formData.project,
           work_mode: isLeave ? 'Ofis' : formData.work_mode,
           identity_id: user.id,
@@ -533,15 +538,47 @@ const UserDashboard = ({ user, onLogout }) => {
 
               {formData.activity_type === 'İzin' && (
                 <div className="form-group">
-                  <label>İzin Süresi (Saat) *</label>
-                  <input
-                    type="number"
-                    value="8"
-                    readOnly
-                    style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                  />
-                  <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
-                    İzin için 8 saat otomatik olarak ayarlanır. Proje ve çalışma şekli otomatik olarak ayarlanır.
+                  <label>İzin Süresi *</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleLeaveTypeChange('tam-gun')}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: leaveType === 'tam-gun' ? '2px solid #6366f1' : '1.5px solid #e2e8f0',
+                        background: leaveType === 'tam-gun' ? '#eef2ff' : '#fff',
+                        color: leaveType === 'tam-gun' ? '#4f46e5' : '#64748b',
+                        fontWeight: leaveType === 'tam-gun' ? '700' : '400',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      ☀️ Tam Gün
+                      <div style={{ fontSize: '12px', marginTop: '2px', opacity: 0.8 }}>8 saat</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLeaveTypeChange('yarim-gun')}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: leaveType === 'yarim-gun' ? '2px solid #6366f1' : '1.5px solid #e2e8f0',
+                        background: leaveType === 'yarim-gun' ? '#eef2ff' : '#fff',
+                        color: leaveType === 'yarim-gun' ? '#4f46e5' : '#64748b',
+                        fontWeight: leaveType === 'yarim-gun' ? '700' : '400',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      🌙 Yarım Gün
+                      <div style={{ fontSize: '12px', marginTop: '2px', opacity: 0.8 }}>4 saat</div>
+                    </button>
+                  </div>
+                  <small style={{ color: '#888', fontSize: '12px', display: 'block', marginTop: '6px' }}>
+                    Seçilen süre: <strong>{leaveType === 'tam-gun' ? '8' : '4'} saat</strong> — proje ve çalışma şekli otomatik ayarlanır.
                   </small>
                 </div>
               )}

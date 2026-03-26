@@ -25,12 +25,14 @@ def timesheet_analysis_pdf():
         start_date = data.get("start_date")
         end_date = data.get("end_date")
         user_id = data.get("user_id")
+        user_name = data.get("user_name", "")
 
         pdf_bytes = create_timesheet_analysis_pdf(
             entries,
             start_date=start_date,
             end_date=end_date,
             user_id=user_id,
+            user_name=user_name,
         )
 
         buffer = BytesIO(pdf_bytes)

@@ -1,35 +1,21 @@
 
 import sys
 import os
-import subprocess
 
-def run_migrations():
-    """Alembic migration'larını çalıştırır"""
-    try:
-        # Backend dizinine geç
-        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        os.chdir(backend_dir)
-        
-        print("Alembic migration'ları çalıştırılıyor...")
-        result = subprocess.run(
-            ["python", "-m", "alembic", "upgrade", "head"],
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode == 0:
-            print("Migration'lar başarıyla uygulandı!")
-            print(result.stdout)
-        else:
-            print(f"Hata: {result.stderr}")
-            return False
-            
-        return True
-        
-    except Exception as e:
-        print(f"Hata: {e}")
-        return False
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import create_app
+from app.models import db
+from app.logger import log_success, log_error
+
 
 if __name__ == "__main__":
-    run_migrations()
+    app = create_app()
+    with app.app_context():
+        try:
+            db.create_all()
+            log_success("Tablolar oluşturuldu/kontrol edildi")
+        except Exception as e:
+            log_error(f"Tablolar oluşturulurken hata oluştu: {e}")
+            raise
 

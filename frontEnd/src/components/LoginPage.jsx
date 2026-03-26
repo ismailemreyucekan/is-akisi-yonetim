@@ -1,30 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './LoginPage.css'
 import AdminDashboard from './AdminDashboard'
 import UserDashboard from './UserDashboard'
 
 const API_URL = 'http://localhost:5000/api'
+const SESSION_KEY = 'iay_session'
 
 const LoginPage = () => {
-  const [userType, setUserType] = useState(null) // null, 'admin', or 'user'
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+  const [userType, setUserType] = useState(null)
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loggedInUser, setLoggedInUser] = useState(null)
 
+  // Sayfa açılırken kayıtlı oturumu kontrol et
+  useEffect(() => {
+    const saved =
+      localStorage.getItem(SESSION_KEY) ||
+      sessionStorage.getItem(SESSION_KEY)
+    if (saved) {
+      try {
+        const user = JSON.parse(saved)
+        setLoggedInUser(user)
+      } catch {
+        localStorage.removeItem(SESSION_KEY)
+        sessionStorage.removeItem(SESSION_KEY)
+      }
+    }
+  }, [])
+
   const handleUserTypeSelect = (type) => {
     setUserType(type)
     setFormData({ email: '', password: '' })
+    setError('')
   }
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   const handleSubmit = async (e) => {
@@ -35,23 +48,26 @@ const LoginPage = () => {
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          user_type: userType
-        })
+          user_type: userType,
+        }),
       })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Başarılı giriş
-        setLoggedInUser(data.user)
+        const userData = data.user
+        // "Beni hatırla" işaretliyse localStorage, değilse sessionStorage
+        if (rememberMe) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(userData))
+        } else {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData))
+        }
+        setLoggedInUser(userData)
       } else {
-        // Hata mesajı göster
         setError(data.message || 'Giriş başarısız')
       }
     } catch (err) {
@@ -63,14 +79,18 @@ const LoginPage = () => {
   }
 
   const handleLogout = () => {
+    localStorage.removeItem(SESSION_KEY)
+    sessionStorage.removeItem(SESSION_KEY)
     setLoggedInUser(null)
     setUserType(null)
     setFormData({ email: '', password: '' })
+    setRememberMe(false)
   }
 
   const handleBack = () => {
     setUserType(null)
     setFormData({ email: '', password: '' })
+    setError('')
   }
 
   if (loggedInUser) {
@@ -99,7 +119,7 @@ const LoginPage = () => {
             <h1 className="welcome-title">İş Akış Yönetim Sistemi</h1>
             <p className="welcome-subtitle">Sisteme giriş yapmak için bir seçenek seçin</p>
           </div>
-          
+
           <div className="login-cards-container">
             <div
               className="login-card-item user-card"
@@ -154,7 +174,7 @@ const LoginPage = () => {
                 <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            
+
             <div className="login-header">
               <div className={`user-type-icon ${userType}`}>
                 {userType === 'admin' ? (
@@ -177,17 +197,9 @@ const LoginPage = () => {
               <p className="login-subtitle">Hesabınıza giriş yapın</p>
             </div>
 
-            <form
-              className="login-form"
-              onSubmit={handleSubmit}
-              autoComplete="off"
-            >
-              {error && (
-                <div className="error-message">
-                  {error}
-                </div>
-              )}
-              
+            <form className="login-form" onSubmit={handleSubmit} autoComplete="off">
+              {error && <div className="error-message">{error}</div>}
+
               <div className="form-group">
                 <label htmlFor="email">E-posta</label>
                 <input
@@ -220,7 +232,12 @@ const LoginPage = () => {
 
               <div className="form-options">
                 <label className="remember-me">
-                  <input type="checkbox" disabled={loading} />
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={loading}
+                  />
                   <span>Beni hatırla</span>
                 </label>
                 <a href="#" className="forgot-password">Şifremi unuttum</a>
@@ -238,4 +255,3 @@ const LoginPage = () => {
 }
 
 export default LoginPage
-

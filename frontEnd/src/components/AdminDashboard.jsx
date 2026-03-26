@@ -313,6 +313,46 @@ const AdminDashboard = ({ user, onLogout }) => {
     }
   }, [activeSection, selectedUserId, selectedMonth])
 
+  const formatLocalISO = (d) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const handleExportPdfAdmin = async () => {
+    if (!selectedUserId) return
+    const selectedUser = users.find(u => u.id === selectedUserId)
+    try {
+      const { start, end } = getMonthRange(selectedMonth)
+      const res = await fetch(`${API_URL}/timesheets/analysis/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: selectedUserId,
+          start_date: formatLocalISO(start),
+          end_date: formatLocalISO(end),
+          user_name: selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : '',
+          timesheets,
+        }),
+      })
+      if (!res.ok) throw new Error('PDF indirilemedi')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const userName = selectedUser ? `${selectedUser.first_name}_${selectedUser.last_name}` : `kullanici_${selectedUserId}`
+      a.download = `timesheet_${userName}_${formatLocalISO(start)}_${formatLocalISO(end)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e)
+      alert('PDF indirilemedi')
+    }
+  }
+
   const handleTimesheetStatus = async (tsId, status, reason) => {
     let payload = { status }
     if (status === 'Reddedildi') {
@@ -701,6 +741,14 @@ const AdminDashboard = ({ user, onLogout }) => {
                     </option>
                   ))}
                 </select>
+                <button
+                  className="primary-button"
+                  onClick={handleExportPdfAdmin}
+                  disabled={!selectedUserId || timesheets.length === 0}
+                  title={timesheets.length === 0 ? 'Bu ay için kayıt yok' : 'PDF İndir'}
+                >
+                  📄 PDF İndir
+                </button>
                 <div className="month-switcher">
                   <button
                     className="ghost-button"
