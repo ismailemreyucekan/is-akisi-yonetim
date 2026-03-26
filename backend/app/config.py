@@ -1,13 +1,12 @@
 
 import os
-from app.database import db_config
 
 class Config:
     
-    # SQLAlchemy veritabanı URI'si
+    # SQLAlchemy veritabanı URI'si - doğrudan değerlerle oluştur
+    # database.py'den import yerine doğrudan burada tanımlıyoruz
     SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{db_config['user']}:{db_config['password']}"
-        f"@{db_config['host']}:{db_config['port']}/{db_config['database']}"
+        "postgresql://postgres:12345678@localhost:5432/is_akis"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False  

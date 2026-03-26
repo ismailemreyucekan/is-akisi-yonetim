@@ -166,3 +166,4 @@ def delete_timesheet(ts_id):
             'message': 'Timesheet silinirken bir hata oluştu'
         }), 500
 
+

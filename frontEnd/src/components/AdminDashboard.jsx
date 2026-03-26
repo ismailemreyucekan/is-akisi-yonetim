@@ -23,8 +23,14 @@ const AdminDashboard = ({ user, onLogout }) => {
   const [timesheetLoading, setTimesheetLoading] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
-  const [activeSection, setActiveSection] = useState(user.user_type === 'admin' ? 'users' : 'timesheet') // 'users' | 'timesheet' | 'auth' | 'schema'
+  const [activeSection, setActiveSection] = useState(user.user_type === 'admin' ? 'users' : 'timesheet') // 'users' | 'timesheet' | 'auth' | 'schema' | 'timesheet-settings'
   const [rejectModal, setRejectModal] = useState({ open: false, tsId: null, reason: '' })
+  const [timesheetSettings, setTimesheetSettings] = useState([])
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsModal, setSettingsModal] = useState({ open: false, editing: null, settingType: 'project' })
+  const [settingFormData, setSettingFormData] = useState({ value: '', is_active: true, display_order: 0 })
+  const [settingsError, setSettingsError] = useState('')
+  const [settingsSuccess, setSettingsSuccess] = useState('')
   
   const isAdmin = user.user_type === 'admin'
 
@@ -243,7 +249,11 @@ const AdminDashboard = ({ user, onLogout }) => {
   const formatDateKey = (d) => {
     if (!d) return ''
     const date = typeof d === 'string' ? new Date(d) : d
-    return date.toISOString().split('T')[0]
+    // Yerel saat diliminde formatla (UTC sorununu önlemek için)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   const buildMonthDays = (dateObj) => {
@@ -352,6 +362,118 @@ const AdminDashboard = ({ user, onLogout }) => {
   const activeUsers = users.filter(u => u.is_active).length
   const totalUsers = users.length
 
+  const fetchTimesheetSettings = async () => {
+    try {
+      setSettingsLoading(true)
+      const response = await fetch(`${API_URL}/timesheet-settings`)
+      const data = await response.json()
+      if (data.success) {
+        setTimesheetSettings(data.settings || [])
+      }
+    } catch (err) {
+      console.error('Timesheet ayarları yüklenirken hata:', err)
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeSection === 'timesheet-settings' && isAdmin) {
+      fetchTimesheetSettings()
+    }
+  }, [activeSection])
+
+  const handleOpenSettingsModal = (settingType = 'project', editing = null) => {
+    if (editing) {
+      setSettingFormData({
+        value: editing.value,
+        is_active: editing.is_active,
+        display_order: editing.display_order || 0
+      })
+    } else {
+      setSettingFormData({ value: '', is_active: true, display_order: 0 })
+    }
+    setSettingsModal({ open: true, editing, settingType })
+  }
+
+  const handleCloseSettingsModal = () => {
+    setSettingsModal({ open: false, editing: null, settingType: 'project' })
+    setSettingFormData({ value: '', is_active: true, display_order: 0 })
+    setSettingsError('')
+    setSettingsSuccess('')
+  }
+
+  const handleSaveSetting = async (e) => {
+    e.preventDefault()
+    
+    if (!settingFormData.value || !settingFormData.value.trim()) {
+      alert('Lütfen bir değer girin')
+      return
+    }
+
+    try {
+      const url = settingsModal.editing
+        ? `${API_URL}/timesheet-settings/${settingsModal.editing.id}`
+        : `${API_URL}/timesheet-settings`
+      
+      const method = settingsModal.editing ? 'PUT' : 'POST'
+      const body = {
+        ...settingFormData,
+        setting_type: settingsModal.settingType,
+        value: settingFormData.value.trim()
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchTimesheetSettings()
+        handleCloseSettingsModal()
+        setSettingsError('')
+        setSettingsSuccess('Ayar başarıyla kaydedildi')
+        setTimeout(() => setSettingsSuccess(''), 3000)
+      } else {
+        const errorMsg = data.message || 'Kaydedilemedi'
+        alert(errorMsg)
+        setSettingsError(errorMsg)
+      }
+    } catch (err) {
+      console.error('Ayar kaydetme hatası:', err)
+      const errorMsg = `Bir hata oluştu: ${err.message || 'Bilinmeyen hata'}`
+      alert(errorMsg)
+      setSettingsError(errorMsg)
+    }
+  }
+
+  const handleDeleteSetting = async (id) => {
+    if (!window.confirm('Bu ayarı silmek istediğinize emin misiniz?')) {
+      return
+    }
+    try {
+      const response = await fetch(`${API_URL}/timesheet-settings/${id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+      if (data.success) {
+        await fetchTimesheetSettings()
+      } else {
+        alert(data.message || 'Silinemedi')
+      }
+    } catch (err) {
+      console.error('Ayar silme hatası:', err)
+      alert('Bir hata oluştu')
+    }
+  }
+
+  const getSettingsByType = (type) => {
+    return timesheetSettings.filter(s => s.setting_type === type)
+  }
+
   const sectionTitle = () => {
     switch (activeSection) {
       case 'timesheet':
@@ -360,6 +482,8 @@ const AdminDashboard = ({ user, onLogout }) => {
         return { kicker: 'Kullanıcı rolleri ve yetkilerini yönetin', title: 'Yetkilendirme' }
       case 'schema':
         return { kicker: 'Sistem şeması ve akışları', title: 'Şema Yönetimi' }
+      case 'timesheet-settings':
+        return { kicker: 'Timesheet seçeneklerini yönetin', title: 'Timesheet Ayarları' }
       default:
         return { kicker: 'Tüm kullanıcıları görüntüleyin ve yönetin', title: 'Kullanıcı Yönetimi' }
     }
@@ -397,6 +521,13 @@ const AdminDashboard = ({ user, onLogout }) => {
           </div>
           {isAdmin && (
             <>
+              <div
+                className={`nav-item ${activeSection === 'timesheet-settings' ? 'active' : ''}`}
+                onClick={() => setActiveSection('timesheet-settings')}
+              >
+                <span className="nav-icon">⚙️</span>
+                <span>Timesheet Ayarları</span>
+              </div>
               <div
                 className={`nav-item ${activeSection === 'users' ? 'active' : ''}`}
                 onClick={() => setActiveSection('users')}
@@ -791,6 +922,209 @@ const AdminDashboard = ({ user, onLogout }) => {
             <div className="loading-state">Şema görünümü henüz eklenmedi.</div>
           </section>
         )}
+
+        {activeSection === 'timesheet-settings' && isAdmin && (
+          <section className="table-card">
+            <div className="table-toolbar">
+              <div className="toolbar-left">
+                <p className="page-kicker">Timesheet seçeneklerini yönetin</p>
+                <h2 className="page-title" style={{ fontSize: '20px', margin: 0 }}>Timesheet Ayarları</h2>
+              </div>
+            </div>
+
+            {settingsLoading ? (
+              <div className="loading-state">Ayarlar yükleniyor...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Projeler */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Projeler</h3>
+                    <button
+                      className="primary-button"
+                      onClick={() => handleOpenSettingsModal('project')}
+                    >
+                      + Proje Ekle
+                    </button>
+                  </div>
+                  <div className="table-scroll">
+                    <table className="user-table">
+                      <thead>
+                        <tr>
+                          <th>Proje Adı</th>
+                          <th>Durum</th>
+                          <th>Sıra</th>
+                          <th>İşlemler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getSettingsByType('project').length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>
+                              Henüz proje eklenmemiş
+                            </td>
+                          </tr>
+                        ) : (
+                          getSettingsByType('project').map((s) => (
+                            <tr key={s.id}>
+                              <td>{s.value}</td>
+                              <td>
+                                <span className={`pill pill-status ${s.is_active ? 'pill-success' : 'pill-muted'}`}>
+                                  {s.is_active ? 'Aktif' : 'Pasif'}
+                                </span>
+                              </td>
+                              <td>{s.display_order}</td>
+                              <td className="actions-cell">
+                                <button
+                                  className="icon-button"
+                                  onClick={() => handleOpenSettingsModal('project', s)}
+                                  title="Düzenle"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  onClick={() => handleDeleteSetting(s.id)}
+                                  title="Sil"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Aktivite Tipleri */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Aktivite Tipleri</h3>
+                    <button
+                      className="primary-button"
+                      onClick={() => handleOpenSettingsModal('activity_type')}
+                    >
+                      + Aktivite Tipi Ekle
+                    </button>
+                  </div>
+                  <div className="table-scroll">
+                    <table className="user-table">
+                      <thead>
+                        <tr>
+                          <th>Aktivite Tipi</th>
+                          <th>Durum</th>
+                          <th>Sıra</th>
+                          <th>İşlemler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getSettingsByType('activity_type').length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>
+                              Henüz aktivite tipi eklenmemiş
+                            </td>
+                          </tr>
+                        ) : (
+                          getSettingsByType('activity_type').map((s) => (
+                            <tr key={s.id}>
+                              <td>{s.value}</td>
+                              <td>
+                                <span className={`pill pill-status ${s.is_active ? 'pill-success' : 'pill-muted'}`}>
+                                  {s.is_active ? 'Aktif' : 'Pasif'}
+                                </span>
+                              </td>
+                              <td>{s.display_order}</td>
+                              <td className="actions-cell">
+                                <button
+                                  className="icon-button"
+                                  onClick={() => handleOpenSettingsModal('activity_type', s)}
+                                  title="Düzenle"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  onClick={() => handleDeleteSetting(s.id)}
+                                  title="Sil"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Çalışma Şekilleri */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Çalışma Şekilleri</h3>
+                    <button
+                      className="primary-button"
+                      onClick={() => handleOpenSettingsModal('work_mode')}
+                    >
+                      + Çalışma Şekli Ekle
+                    </button>
+                  </div>
+                  <div className="table-scroll">
+                    <table className="user-table">
+                      <thead>
+                        <tr>
+                          <th>Çalışma Şekli</th>
+                          <th>Durum</th>
+                          <th>Sıra</th>
+                          <th>İşlemler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getSettingsByType('work_mode').length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>
+                              Henüz çalışma şekli eklenmemiş
+                            </td>
+                          </tr>
+                        ) : (
+                          getSettingsByType('work_mode').map((s) => (
+                            <tr key={s.id}>
+                              <td>{s.value}</td>
+                              <td>
+                                <span className={`pill pill-status ${s.is_active ? 'pill-success' : 'pill-muted'}`}>
+                                  {s.is_active ? 'Aktif' : 'Pasif'}
+                                </span>
+                              </td>
+                              <td>{s.display_order}</td>
+                              <td className="actions-cell">
+                                <button
+                                  className="icon-button"
+                                  onClick={() => handleOpenSettingsModal('work_mode', s)}
+                                  title="Düzenle"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  onClick={() => handleDeleteSetting(s.id)}
+                                  title="Sil"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       {/* Modal */}
@@ -923,6 +1257,82 @@ const AdminDashboard = ({ user, onLogout }) => {
                 </button>
                 <button type="submit" className="primary-button">
                   Gönder
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Timesheet Settings Modal */}
+      {settingsModal.open && (
+        <div className="modal-overlay" onClick={handleCloseSettingsModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {settingsModal.editing ? 'Ayar Düzenle' : 'Yeni Ayar Ekle'} - {
+                  settingsModal.settingType === 'project' ? 'Proje' :
+                  settingsModal.settingType === 'activity_type' ? 'Aktivite Tipi' :
+                  'Çalışma Şekli'
+                }
+              </h2>
+              <button className="modal-close" onClick={handleCloseSettingsModal}>×</button>
+            </div>
+            <form className="modal-form" onSubmit={handleSaveSetting}>
+              {settingsError && (
+                <div className="error-message" style={{ marginBottom: '16px' }}>{settingsError}</div>
+              )}
+              {settingsSuccess && (
+                <div className="error-message" style={{ background: '#ecfdf3', borderColor: '#86efac', color: '#16a34a', marginBottom: '16px' }}>{settingsSuccess}</div>
+              )}
+              <div className="form-group">
+                <label>
+                  {settingsModal.settingType === 'project' ? 'Proje Adı' :
+                   settingsModal.settingType === 'activity_type' ? 'Aktivite Tipi' :
+                   'Çalışma Şekli'} *
+                </label>
+                <input
+                  type="text"
+                  value={settingFormData.value}
+                  onChange={(e) => {
+                    setSettingFormData({ ...settingFormData, value: e.target.value })
+                    setSettingsError('')
+                  }}
+                  required
+                  placeholder="Ad girin"
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Sıra</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={settingFormData.display_order}
+                  onChange={(e) => setSettingFormData({ ...settingFormData, display_order: parseInt(e.target.value) || 0 })}
+                />
+                <small style={{ color: '#666', fontSize: '12px' }}>Listeleme sırası (düşük sayı önce gösterilir)</small>
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={settingFormData.is_active}
+                    onChange={(e) => setSettingFormData({ ...settingFormData, is_active: e.target.checked })}
+                  />
+                  Aktif
+                </label>
+                <small style={{ color: '#666', fontSize: '12px' }}>Pasif ayarlar timesheet formunda görünmez</small>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="ghost-button" onClick={handleCloseSettingsModal}>
+                  İptal
+                </button>
+                <button type="submit" className="primary-button">
+                  {settingsModal.editing ? 'Güncelle' : 'Ekle'}
                 </button>
               </div>
             </form>

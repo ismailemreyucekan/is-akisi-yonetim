@@ -21,23 +21,9 @@ const UserDashboard = ({ user, onLogout }) => {
   const [modalDate, setModalDate] = useState(new Date())
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  const activityOptions = [
-    'Geliştirme',
-    'Eğitim',
-    'İzin',
-    'Toplantı',
-    'Destek',
-    'Analiz',
-  ]
-
-  const projectOptions = [
-    'Portal Geliştirme',
-    'Mobil Uygulama',
-    'Raporlama',
-    'Altyapı',
-    'Ar-Ge',
-  ]
+  const [projectOptions, setProjectOptions] = useState([])
+  const [activityOptions, setActivityOptions] = useState([])
+  const [workModeOptions, setWorkModeOptions] = useState(['Ofis', 'Uzaktan'])
 
   const getMonthRange = (dateObj) => {
     const start = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1)
@@ -45,10 +31,22 @@ const UserDashboard = ({ user, onLogout }) => {
     return { start, end }
   }
 
+  const formatLocalISO = (d) => {
+    if (!d) return ''
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const formatDateKey = (d) => {
     if (!d) return ''
     const date = typeof d === 'string' ? new Date(d) : d
-    return date.toISOString().split('T')[0]
+    // Yerel saat diliminde formatla (UTC sorununu önlemek için)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   const buildMonthDays = (dateObj) => {
@@ -89,8 +87,8 @@ const UserDashboard = ({ user, onLogout }) => {
       const { start, end } = getMonthRange(month)
       const params = new URLSearchParams({
         user_id: user.id,
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0],
+        start_date: formatLocalISO(start),
+        end_date: formatLocalISO(end),
         include_drafts: 'true',
       })
       const res = await fetch(`${API_URL}/timesheets?${params.toString()}`)
@@ -104,19 +102,103 @@ const UserDashboard = ({ user, onLogout }) => {
     }
   }
 
+  const fetchTimesheetSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/timesheet-settings/grouped`)
+      const data = await response.json()
+      if (data.success && data.settings) {
+        setProjectOptions(data.settings.projects || [])
+        setActivityOptions(data.settings.activity_types || [])
+        setWorkModeOptions(data.settings.work_modes || ['Ofis', 'Uzaktan'])
+      }
+    } catch (err) {
+      console.error('Timesheet ayarları yüklenirken hata:', err)
+      // Hata durumunda varsayılan değerleri kullan
+      setProjectOptions(['Portal Geliştirme', 'Mobil Uygulama', 'Raporlama', 'Altyapı', 'Ar-Ge'])
+      setActivityOptions(['Geliştirme', 'Eğitim', 'İzin', 'Toplantı', 'Destek', 'Analiz'])
+    }
+  }
+
+  useEffect(() => {
+    fetchTimesheetSettings()
+  }, [])
+
   useEffect(() => {
     fetchTimesheets(selectedMonth)
   }, [selectedMonth])
 
+  const handleExportPdf = async () => {
+    try {
+      const { start, end } = getMonthRange(selectedMonth)
+      const res = await fetch(`${API_URL}/timesheets/analysis/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          start_date: formatLocalISO(start),
+          end_date: formatLocalISO(end),
+          timesheets,
+        }),
+      })
+      if (!res.ok) throw new Error('PDF indirilemedi')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `timesheet_${formatLocalISO(start)}_${formatLocalISO(end)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e)
+      setError('PDF indirilemedi')
+    }
+  }
+
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    
+    // Eğer aktivite tipi "İzin" seçilirse, diğer alanları otomatik doldur
+    if (name === 'activity_type') {
+      if (value === 'İzin') {
+        setFormData({
+          ...formData,
+          activity_type: value,
+          project: 'İzin',
+          work_mode: 'Ofis',
+        })
+        setDurationHours('8')
+        setDurationMinutes('0')
+      } else {
+        // Başka bir aktivite seçilirse, izin için ayarlanan değerleri temizle
+        setFormData({ ...formData, [name]: value })
+        if (formData.activity_type === 'İzin') {
+          setFormData(prev => ({ ...prev, project: '', work_mode: 'Ofis' }))
+          setDurationHours('')
+          setDurationMinutes('0')
+        }
+      }
+    } else {
+      setFormData({ ...formData, [name]: value })
+    }
   }
 
   const openDayModal = (dateObj) => {
     if (!dateObj) return
-    const iso = dateObj.toISOString().split('T')[0]
+    // Yerel saat diliminde formatla (UTC sorununu önlemek için)
+    const year = dateObj.getFullYear()
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    const iso = `${year}-${month}-${day}`
     setModalDate(dateObj)
-    setFormData((prev) => ({ ...prev, work_date: iso }))
+    setFormData((prev) => ({ 
+      ...prev, 
+      work_date: iso,
+      activity_type: '',
+      project: '',
+      work_mode: 'Ofis'
+    }))
     setDurationHours('')
     setDurationMinutes('0')
     setError('')
@@ -128,10 +210,22 @@ const UserDashboard = ({ user, onLogout }) => {
     e.preventDefault()
     setError('')
     setSuccess('')
+    
+    const isLeave = formData.activity_type === 'İzin'
     const totalHours = Number(durationHours || 0) + Number(durationMinutes || 0) / 60
-    if (!formData.project || !formData.activity_type || !formData.work_mode || totalHours <= 0 || !formData.work_date) {
-      setError('Tüm zorunlu alanları doldurun ve süreyi girin')
-      return
+    
+    // İzin için validasyon
+    if (isLeave) {
+      if (!formData.activity_type || !formData.work_date) {
+        setError('Tarih ve aktivite tipi zorunludur')
+        return
+      }
+    } else {
+      // Normal aktiviteler için tüm alanlar zorunlu
+      if (!formData.project || !formData.activity_type || !formData.work_mode || totalHours <= 0 || !formData.work_date) {
+        setError('Tüm zorunlu alanları doldurun ve süreyi girin')
+        return
+      }
     }
     try {
       const res = await fetch(`${API_URL}/timesheets`, {
@@ -139,7 +233,9 @@ const UserDashboard = ({ user, onLogout }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          hours: totalHours,
+          hours: isLeave ? 8 : totalHours, // İzin için her zaman 8 saat
+          project: isLeave ? 'İzin' : formData.project,
+          work_mode: isLeave ? 'Ofis' : formData.work_mode,
           identity_id: user.id,
         }),
       })
@@ -211,10 +307,32 @@ const UserDashboard = ({ user, onLogout }) => {
         </header>
 
         <section className="table-card">
-          <div className="table-toolbar">
+          <div className="table-toolbar timesheet-toolbar">
             <div className="toolbar-left">
               <p className="page-kicker">Kayıtlarınız</p>
               <h2 className="page-title" style={{ fontSize: '20px', margin: 0 }}>Takvim</h2>
+            </div>
+            <div className="toolbar-right">
+              <button className="primary-button" onClick={handleExportPdf}>
+                PDF İndir
+              </button>
+              <div className="month-switcher">
+                <button
+                  className="ghost-button"
+                  onClick={() => setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                >
+                  ←
+                </button>
+                <div className="month-label">
+                  {selectedMonth.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+                </div>
+                <button
+                  className="ghost-button"
+                  onClick={() => setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                >
+                  →
+                </button>
+              </div>
             </div>
           </div>
 
@@ -354,16 +472,6 @@ const UserDashboard = ({ user, onLogout }) => {
               </div>
 
               <div className="form-group">
-                <label>Proje *</label>
-                <select name="project" value={formData.project} onChange={handleInputChange} required>
-                  <option value="">Seçiniz</option>
-                  {projectOptions.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label>Aktivite Tipi *</label>
                 <select name="activity_type" value={formData.activity_type} onChange={handleInputChange} required>
                   <option value="">Seçiniz</option>
@@ -373,40 +481,70 @@ const UserDashboard = ({ user, onLogout }) => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Çalışma Şekli *</label>
-                <select name="work_mode" value={formData.work_mode} onChange={handleInputChange} required>
-                  <option value="Ofis">Ofis</option>
-                  <option value="Uzaktan">Uzaktan</option>
-                  
-                </select>
-              </div>
+              {formData.activity_type !== 'İzin' && (
+                <>
+                  <div className="form-group">
+                    <label>Proje *</label>
+                    <select name="project" value={formData.project} onChange={handleInputChange} required>
+                      <option value="">Seçiniz</option>
+                      {projectOptions.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="form-group">
-                <label>Çalışılan Süre *</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="form-group">
+                    <label>Çalışma Şekli *</label>
+                    <select name="work_mode" value={formData.work_mode} onChange={handleInputChange} required>
+                      <option value="">Seçiniz</option>
+                      {workModeOptions.map((mode) => (
+                        <option key={mode} value={mode}>{mode}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Çalışılan Süre *</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Saat"
+                        value={durationHours}
+                        onChange={(e) => setDurationHours(e.target.value)}
+                        style={{ flex: 1 }}
+                        required
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        step="1"
+                        placeholder="Dakika"
+                        value={durationMinutes}
+                        onChange={(e) => setDurationMinutes(e.target.value)}
+                        style={{ width: '90px' }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {formData.activity_type === 'İzin' && (
+                <div className="form-group">
+                  <label>İzin Süresi (Saat) *</label>
                   <input
                     type="number"
-                    min="0"
-                    step="1"
-                    placeholder="Saat"
-                    value={durationHours}
-                    onChange={(e) => setDurationHours(e.target.value)}
-                    style={{ flex: 1 }}
-                    required
+                    value="8"
+                    readOnly
+                    style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
                   />
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    step="1"
-                    placeholder="Dakika"
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(e.target.value)}
-                    style={{ width: '90px' }}
-                  />
+                  <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                    İzin için 8 saat otomatik olarak ayarlanır. Proje ve çalışma şekli otomatik olarak ayarlanır.
+                  </small>
                 </div>
-              </div>
+              )}
 
               <div className="form-group">
                 <label>Açıklama</label>

@@ -68,3 +68,29 @@ class Timesheet(db.Model):
             'reject_reason': self.reject_reason,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class TimesheetSetting(db.Model):
+    """Timesheet ayarları (projeler, aktivite tipleri, çalışma şekilleri)"""
+    
+    __tablename__ = 'timesheet_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    setting_type = db.Column(db.String(50), nullable=False, index=True)  # 'project', 'activity_type', 'work_mode'
+    value = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    display_order = db.Column(db.Integer, default=0, nullable=False)  # Sıralama için
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    def __repr__(self):
+        return f'<TimesheetSetting {self.setting_type}: {self.value}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'setting_type': self.setting_type,
+            'value': self.value,
+            'is_active': self.is_active,
+            'display_order': self.display_order,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
